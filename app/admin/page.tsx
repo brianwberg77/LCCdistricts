@@ -4,6 +4,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export const dynamic = 'force-dynamic';
 
+/* ------------------------
+   Types
+------------------------- */
 type ProfileLite = {
   id: string;
   first_name: string | null;
@@ -16,7 +19,7 @@ type RSVPRow = {
   event_id: string;
   status: 'Yes' | 'Maybe' | 'No';
   comments?: string | null;
-  profiles: ProfileLite;
+  profiles: ProfileLite | ProfileLite[];
 };
 
 type EventRow = {
@@ -33,7 +36,10 @@ type RosterRow = {
   member_id: string;
 };
 
-function formatDate(d: string) {
+/* ------------------------
+   Display helpers (SAFE)
+------------------------- */
+function formatDisplayDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -41,21 +47,18 @@ function formatDate(d: string) {
   });
 }
 
-function formatTime(d: string) {
+function formatDisplayTime(d: string) {
   return new Date(d).toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit',
   });
 }
 
-export default async function AdminRosterPage({
-  searchParams,
-}: {
-  searchParams?: { notice?: string };
-}) {
-  // --------------------------------------------------
-  // Supabase SSR client
-  // --------------------------------------------------
+/* ------------------------
+   Page
+------------------------- */
+export default async function AdminRosterPage() {
+  /* ---------- Supabase SSR ---------- */
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -68,27 +71,23 @@ export default async function AdminRosterPage({
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {}
         },
       },
     }
   );
 
-  // --------------------------------------------------
-  // Auth + admin check
-  // --------------------------------------------------
+  /* ---------- Auth ---------- */
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect('/login');
 
   const { data: isAdmin } = await supabase.rpc('is_admin');
   if (!isAdmin) redirect('/dashboard');
 
-  // --------------------------------------------------
-  // Server Action: toggle roster selection
-  // --------------------------------------------------
+  /* ---------- Server Action ---------- */
   async function toggleRoster(formData: FormData) {
     'use server';
 
@@ -103,9 +102,9 @@ export default async function AdminRosterPage({
           },
           setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
             try {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
             } catch {}
           },
         },
@@ -125,18 +124,13 @@ export default async function AdminRosterPage({
     } else {
       await supabase
         .from('event_roster')
-        .upsert(
-          { event_id, member_id },
-          { onConflict: 'event_id,member_id' }
-        );
+        .upsert({ event_id, member_id }, { onConflict: 'event_id,member_id' });
     }
 
     redirect('/admin');
   }
 
-  // --------------------------------------------------
-  // Load data
-  // --------------------------------------------------
+  /* ---------- Load data ---------- */
   const { data: events } = await supabase
     .from('events')
     .select('*')
@@ -161,6 +155,7 @@ export default async function AdminRosterPage({
     .from('event_roster')
     .select('event_id, member_id');
 
+  /* ---------- Build selection map ---------- */
   const selectedMap = new Map<string, Set<string>>();
   (roster ?? []).forEach((r: RosterRow) => {
     if (!selectedMap.has(r.event_id)) {
@@ -171,9 +166,7 @@ export default async function AdminRosterPage({
 
   const now = new Date();
 
-  // --------------------------------------------------
-  // Render
-  // --------------------------------------------------
+  /* ---------- Render ---------- */
   return (
     <main className="max-w-6xl mx-auto px-6 py-12 space-y-10">
       <div className="flex justify-between items-end">
@@ -182,23 +175,17 @@ export default async function AdminRosterPage({
             Admin – Roster Builder
           </h1>
           <p className="text-gray-600">
-            Build match rosters from confirmed availability.
+            Select players from confirmed RSVPs.
           </p>
         </div>
 
         <a
           href="/admin/events"
-          className="text-sm text-[#0a2540] underline hover:text-[#d4af37]"
+          className="text-sm text-[#0a2540] hover:text-[#d4af37]"
         >
           Manage Events →
         </a>
       </div>
-
-      {searchParams?.notice && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-lg">
-          {searchParams.notice}
-        </div>
-      )}
 
       {(events ?? []).map((event: EventRow) => {
         const eventRSVPs = (rsvps ?? []).filter(r => r.event_id === event.id);
@@ -212,18 +199,21 @@ export default async function AdminRosterPage({
         const selected = selectedMap.get(event.id) ?? new Set<string>();
 
         return (
-          <section key={event.id} className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-            {/* Event Summary */}
+          <section
+            key={event.id}
+            className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
+          >
+            {/* Event header */}
             <div className="flex justify-between gap-6">
               <div>
                 <h2 className="text-2xl font-medium">
-                  {formatDate(event.date)}
+                  {formatDisplayDate(event.date)}
                 </h2>
                 <div className="text-gray-600">
                   {event.hosting_club} vs {event.opponent_club}
                 </div>
                 <div className="text-sm text-gray-500">
-                  {formatTime(event.date)}
+                  {formatDisplayTime(event.date)}
                 </div>
                 {cutoff && (
                   <div className={`text-sm mt-1 ${locked ? 'text-red-600' : 'text-gray-500'}`}>
@@ -233,17 +223,21 @@ export default async function AdminRosterPage({
               </div>
 
               <div className="flex gap-3 text-sm">
-                <span className="px-3 py-1 rounded bg-green-100 text-green-800">✅ Yes: {yes.length}</span>
-                <span className="px-3 py-1 rounded bg-yellow-100 text-yellow-800">❓ Maybe: {maybe.length}</span>
-                <span className="px-3 py-1 rounded bg-red-100 text-red-800">❌ No: {no.length}</span>
+                <span className="px-3 py-1 rounded bg-green-100 text-green-800">
+                  ✅ Yes: {yes.length}
+                </span>
+                <span className="px-3 py-1 rounded bg-yellow-100 text-yellow-800">
+                  ❓ Maybe: {maybe.length}
+                </span>
+                <span className="px-3 py-1 rounded bg-red-100 text-red-800">
+                  ❌ No: {no.length}
+                </span>
               </div>
             </div>
 
-            {/* Roster Builder */}
+            {/* Roster builder */}
             <div className="space-y-3">
-              <h3 className="font-semibold">
-                Roster Candidates (Yes RSVPs)
-              </h3>
+              <h3 className="font-semibold">Roster Candidates (Yes)</h3>
 
               {yes.length === 0 ? (
                 <p className="text-sm text-gray-500">
@@ -252,7 +246,14 @@ export default async function AdminRosterPage({
               ) : (
                 <div className="grid md:grid-cols-2 gap-3">
                   {yes.map(r => {
-                    const isSelected = selected.has(r.profiles.id);
+                    const profile = Array.isArray(r.profiles)
+                      ? r.profiles[0]
+                      : r.profiles;
+
+                    if (!profile) return null;
+
+                    const isSelected = selected.has(profile.id);
+
                     return (
                       <div
                         key={r.id}
@@ -260,7 +261,7 @@ export default async function AdminRosterPage({
                       >
                         <div>
                           <div className="font-medium">
-                            {r.profiles.last_name}, {r.profiles.first_name}
+                            {profile.last_name}, {profile.first_name}
                           </div>
                           {r.comments && (
                             <div className="text-xs text-gray-500 italic">
@@ -269,21 +270,24 @@ export default async function AdminRosterPage({
                           )}
                         </div>
 
-                    <form action={toggleRoster}>
-  <input type="hidden" name="event_id" value={event.id} />
-  <input type="hidden" name="member_id" value={r.profiles.id} />
-  <input type="hidden" name="action" value={isSelected ? 'remove' : 'add'} />
-  <button
-    className={`px-3 py-2 rounded-lg text-sm ${
-      isSelected
-        ? 'bg-red-100 text-red-800 hover:bg-red-200'
-        : 'bg-green-100 text-green-800 hover:bg-green-200'
-    }`}
-  >
-    {isSelected ? 'Remove' : 'Select'}
-  </button>
-</form>                       
-                           
+                        <form action={toggleRoster}>
+                          <input type="hidden" name="event_id" value={event.id} />
+                          <input type="hidden" name="member_id" value={profile.id} />
+                          <input
+                            type="hidden"
+                            name="action"
+                            value={isSelected ? 'remove' : 'add'}
+                          />
+                          <button
+                            className={`px-3 py-2 rounded-lg text-sm ${
+                              isSelected
+                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                            }`}
+                          >
+                            {isSelected ? 'Remove' : 'Select'}
+                          </button>
+                        </form>
                       </div>
                     );
                   })}
