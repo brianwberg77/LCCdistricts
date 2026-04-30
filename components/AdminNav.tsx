@@ -1,20 +1,30 @@
-// components/AdminNav.tsx
-'use client';
+"use client";
 
-import { useSupabase } from '@/components/SupabaseProvider';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSupabase } from "@/components/SupabaseProvider";
 
 export default function AdminNav() {
   const { user, role } = useSupabase();
+  const pathname = usePathname();
 
-  if (!user || role !== 'admin') return null;
+  if (!user || role !== "admin") return null;
 
-  return (
-    <a
-      href="/admin"
-      className="hover:text-[#d4af37]"
-      title="Admin tools"
+  const isOnAdmin = pathname.startsWith("/admin");
+
+  return isOnAdmin ? (
+    <Link
+      href="/dashboard"
+      className="text-[#0a2540] hover:text-[#d4af37]"
     >
-      Admin
-    </a>
+      Dashboard
+    </Link>
+  ) : (
+    <Link
+      href="/admin"
+      className="text-[#0a2540] hover:text-[#d4af37]"
+    >
+      Return to Admin
+    </Link>
   );
 }

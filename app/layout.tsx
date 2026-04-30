@@ -3,6 +3,9 @@ import "./globals.css";
 import { SupabaseProvider } from "@/components/SupabaseProvider";
 import Image from "next/image";
 import AdminNav from "@/components/AdminNav";
+import Link from "next/link"; 
+import ProfileNav from "@/components/ProfileNav";
+
 
 export const metadata: Metadata = {
   title: "Lincolnshire Country Club | District Roster",
@@ -42,24 +45,21 @@ export default function RootLayout({
               </div>
 
               {/* Navigation */}
-              <nav className="flex gap-6 text-sm font-medium">
-                <a
-                  href="/dashboard"
-                  className="text-[#0a2540] hover:text-[#d4af37]"
-                >
-                  Dashboard
-                </a>
+              
+<nav className="flex gap-6 text-sm font-medium">
+  <Link href="/dashboard" className="text-[#0a2540] hover:text-[#d4af37]">
+    Dashboard
+  </Link>
 
-                {/* Admin-only link */}
-                <AdminNav />
+  <ProfileNav />
 
-                <a
-                  href="/login"
-                  className="text-[#0a2540] hover:text-[#d4af37]"
-                >
-                  Member Login
-                </a>
-              </nav>
+  <AdminNav />
+
+  <Link href="/login" className="text-[#0a2540] hover:text-[#d4af37]">
+    Member Login
+  </Link>
+</nav>
+
             </div>
           </header>
 
