@@ -83,6 +83,12 @@ export default async function PublicSchedulePage() {
                 <p className="text-sm text-gray-500">
                   RSVP cutoff:{" "}
                   <strong>{formatRsvpCutoff(e.rsvp_cutoff)}</strong>
+	<a
+				href={`/api/events/${e.id}/calendar`}
+				className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
+				>
+				📅 Add to Calendar
+				</a>
                 </p>
               )}
             </div>
