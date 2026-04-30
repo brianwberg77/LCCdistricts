@@ -185,6 +185,14 @@ export default async function AdminRosterPage() {
         >
           Manage Events →
         </a>
+
+<a
+  href="/admin/members"
+  className="text-sm font-medium text-[#0a2540] hover:text-[#d4af37]"
+>
+  Manage Members →
+</a>
+
       </div>
 
       {(events ?? []).map((event: EventRow) => {
