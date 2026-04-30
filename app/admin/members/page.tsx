@@ -86,8 +86,7 @@ export default async function AdminMembersPage({
               <tr className="border-b bg-gray-50 text-left">
                 <th className="py-3 px-4">Name</th>
                 <th className="py-3 px-4">Email</th>
-                <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Edit Link (DEBUG)</th>
+                <th className="py-3 px-4">Role</th>                
                 <th className="py-3 px-4"></th>
               </tr>
             </thead>
@@ -106,10 +105,7 @@ export default async function AdminMembersPage({
 
                     <td className="py-3 px-4 capitalize">{m.role ?? "member"}</td>
 
-                    {/* DEBUG PROOF OF HREF */}
-                    <td className="py-3 px-4 text-xs text-gray-500">
-                      {editHref}
-                    </td>
+                
 
                     <td className="py-3 px-4 text-right">
                       <Link

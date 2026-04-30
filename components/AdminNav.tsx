@@ -1,30 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSupabase } from "@/components/SupabaseProvider";
+import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
 
 export default function AdminNav() {
-  const { user, role } = useSupabase();
-  const pathname = usePathname();
+  const supabase = createClient();
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  if (!user || role !== "admin") return null;
+  useEffect(() => {
+    const load = async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user) {
+        setIsAdmin(false);
+        return;
+      }
 
-  const isOnAdmin = pathname.startsWith("/admin");
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.user.id)
+        .single();
 
-  return isOnAdmin ? (
-    <Link
-      href="/dashboard"
-      className="text-[#0a2540] hover:text-[#d4af37]"
-    >
-      Dashboard
-    </Link>
-  ) : (
-    <Link
-      href="/admin"
-      className="text-[#0a2540] hover:text-[#d4af37]"
-    >
-      Return to Admin
-    </Link>
+      setIsAdmin(data?.role === "admin");
+    };
+
+    load();
+  }, [supabase]);
+
+  if (!isAdmin) return null;
+
+  return (
+    <>
+      <Link href="/admin" className="text-sm hover:underline">
+        Return to Admin
+      </Link>
+    </>
   );
 }
