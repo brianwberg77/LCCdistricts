@@ -78,6 +78,15 @@ export default async function DashboardPage() {
   return (
     <main className="max-w-5xl mx-auto px-6 py-12 space-y-6">
       <h1 className="text-4xl font-serif">Dashboard</h1>
+		
+<a
+    href="/league-info.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+  >
+    ℹ️ League Info
+  </a>
 
       {(events as EventRow[]).map(e => {
         const myRsvp = e.rsvps?.find(r => r.member_id === memberId)
