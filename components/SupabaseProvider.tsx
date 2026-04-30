@@ -1,30 +1,37 @@
+// components/SupabaseProvider.tsx
 'use client';
 
+import { createClient } from '@/lib/supabase/client';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
 
-type SupabaseContextType = {
-  session: Session | null;
-};
-
-const SupabaseContext = createContext<SupabaseContextType>({ session: null });
+const SupabaseContext = createContext<any>(null);
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const load = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user) return;
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setSession(session);
-    });
+      setUser(data.user);
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      setRole(profile?.role ?? null);
+    };
+
+    load();
+  }, [supabase]);
 
   return (
-    <SupabaseContext.Provider value={{ session }}>
+    <SupabaseContext.Provider value={{ supabase, user, role }}>
       {children}
     </SupabaseContext.Provider>
   );

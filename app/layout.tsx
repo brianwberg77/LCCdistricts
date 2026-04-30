@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SupabaseProvider } from "@/components/SupabaseProvider";
 import Image from "next/image";
+import AdminNav from "@/components/AdminNav";
 
 export const metadata: Metadata = {
   title: "Lincolnshire Country Club | District Roster",
@@ -18,29 +19,51 @@ export default function RootLayout({
       <body className="bg-gray-50">
         <SupabaseProvider>
           {/* Header */}
-          <header className="header-bg text-white py-4 sticky top-0 z-50 shadow-md">
+          <header className="header-bg py-4 sticky top-0 z-50 shadow-md">
             <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+              {/* Logo + Title */}
               <div className="flex items-center gap-4">
-                <Image 
-                  src="/logo.png" 
-                  alt="Lincolnshire Country Club" 
-                  width={80} 
+                <Image
+                  src="/logo.png"
+                  alt="Lincolnshire Country Club"
+                  width={80}
                   height={80}
                   className="rounded-full"
                   priority
                 />
                 <div>
-                  <h1 className="text-2xl font-serif tracking-wide">Lincolnshire Country Club</h1>
-                  <p className="text-sm text-[#d4af37] -mt-1">District Roster • Interclub Matches</p>
+                  <h1 className="text-2xl font-serif tracking-wide text-[#0a2540]">
+                    Lincolnshire Country Club
+                  </h1>
+                  <p className="text-sm text-[#d4af37] -mt-1">
+                    District Roster • Interclub Matches
+                  </p>
                 </div>
               </div>
+
+              {/* Navigation */}
               <nav className="flex gap-6 text-sm font-medium">
-                <a href="/" className="hover:text-[#d4af37]">Schedule</a>
-                <a href="/login" className="hover:text-[#d4af37]">Member Login</a>
+                <a
+                  href="/dashboard"
+                  className="text-[#0a2540] hover:text-[#d4af37]"
+                >
+                  Dashboard
+                </a>
+
+                {/* Admin-only link */}
+                <AdminNav />
+
+                <a
+                  href="/login"
+                  className="text-[#0a2540] hover:text-[#d4af37]"
+                >
+                  Member Login
+                </a>
               </nav>
             </div>
           </header>
 
+          {/* Page Content */}
           {children}
         </SupabaseProvider>
       </body>
