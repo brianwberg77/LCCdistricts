@@ -1,14 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params   // ✅ THIS IS THE KEY CHANGE
+  const { id } = await context.params  // ✅ REQUIRED
 
   const cookieStore = await cookies()
 
@@ -35,7 +35,7 @@ export async function GET(
     return new NextResponse('Event not found', { status: 404 })
   }
 
-  // ---- Build ICS (local Central Time, floating) ----
+  // --- ICS (floating Central Time) ---
   const formatICSLocal = (value: string) =>
     value.replace(/[-:]/g, '').replace(' ', 'T')
 
@@ -45,7 +45,7 @@ export async function GET(
       : `${event.hosting_club} vs ${event.opponent_club}`
 
   const start = formatICSLocal(event.date)
-  const end = formatICSLocal(event.date) // adjust duration if needed
+  const end = start // same start/end unless you want duration
 
   const description = [
     event.cost ? `Cost: $${event.cost}` : null,
