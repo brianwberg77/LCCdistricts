@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function AuthCallbackPage() {
-  const supabase = createClient(); // ✅ SSR-compatible browser client
+function AuthCallbackInner() {
+  const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [status, setStatus] = useState('Finishing sign-in...');
+  const [status, setStatus] = useState('Finishing sign-in…');
 
   useEffect(() => {
     const run = async () => {
@@ -27,48 +26,13 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Exchange code for session — writes auth cookies now
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
 
-        if (exchangeError) throw exchangeError;
-
-        // Get verified user + metadata
-        const { data: userData, error: userError } =
-          await supabase.auth.getUser();
-
-        if (userError) throw userError;
-
-        const user = userData.user;
-        if (!user) {
-          setStatus('No user found after confirmation.');
-          return;
-        }
-
-        const meta = user.user_metadata || {};
-
-        // Upsert profile row (safe with RLS)
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
-            email: user.email,
-            first_name: meta.first_name ?? null,
-            last_name: meta.last_name ?? null,
-            cell_phone: meta.cell_phone ?? null,
-            member_number: meta.member_number ?? null,
-            cdga_number: meta.cdga_number ?? null,
-            role: 'member',
-            updated_at: new Date().toISOString(),
-          });
-
-        if (profileError) throw profileError;
-
-        setStatus('✅ Account confirmed. Redirecting to dashboard...');
+        setStatus('✅ Signed in. Redirecting…');
         router.replace('/dashboard');
       } catch (err: any) {
-        console.error('AUTH CALLBACK ERROR:', err);
-        setStatus(err?.message ?? 'Something went wrong in callback.');
+        setStatus(err?.message ?? 'Authentication failed.');
       }
     };
 
@@ -86,3 +50,12 @@ export default function AuthCallbackPage() {
     </div>
   );
 }
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Completing sign-in…</div>}>
+      <AuthCallbackInner />
+    </Suspense>
+  );
+}
+``
