@@ -5,6 +5,7 @@ import Image from "next/image";
 import AdminNav from "@/components/AdminNav";
 import Link from "next/link"; 
 import ProfileNav from "@/components/ProfileNav";
+import AuthNav from "@/components/AuthNav";
 
 
 export const metadata: Metadata = {
@@ -44,21 +45,11 @@ export default function RootLayout({
                 </div>
               </div>
 
-              {/* Navigation */}
-              
-<nav className="flex gap-6 text-sm font-medium">
-  <Link href="/dashboard" className="text-[#0a2540] hover:text-[#d4af37]">
-    Dashboard
-  </Link>
-
-  <ProfileNav />
-
-  <AdminNav />
-
-  <Link href="/login" className="text-[#0a2540] hover:text-[#d4af37]">
-    Member Login
-  </Link>
-</nav>
+              {/* Navigation */}              
+		<nav className="flex gap-6 text-sm font-medium">		  
+		  <AdminNav />
+		  <AuthNav />
+		</nav>
 
             </div>
           </header>
