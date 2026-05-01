@@ -4,37 +4,37 @@ import { createServerClient } from '@supabase/ssr'
 
 export async function POST(
   request: Request,
-  { params }: { params: { event_id: string } }
+  { params }: { params: Promise<{ event_id: string }> }
 ) {
+  const { event_id } = await params
+  const cookieStore = await cookies()
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookies().getAll(),
+        getAll: () => cookieStore.getAll(),
         setAll: () => {},
       },
     }
   )
 
-  const formData = await request.formData()
-  const profileIds = formData.getAll('profile_id') as string[]
-
-  if (profileIds.length === 0) {
-    return NextResponse.redirect(
-      new URL(`/admin/events/${params.event_id}/roster`, request.url)
-    )
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData?.user) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  const rows = profileIds.map(profile_id => ({
-    event_id: params.event_id,
+  const formData = await request.formData()
+  const profile_id = String(formData.get('profile_id'))
+
+  await supabase.from('event_roster').insert({
+    event_id,
     profile_id,
     role: 'playing',
-  }))
-
-  await supabase.from('event_roster').insert(rows)
+  })
 
   return NextResponse.redirect(
-    new URL(`/admin/events/${params.event_id}/roster`, request.url)
+    new URL(`/admin/events/${event_id}/roster`, request.url)
   )
 }
