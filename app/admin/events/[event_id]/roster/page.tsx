@@ -9,6 +9,7 @@ type RosterRow = {
   profile_id: string
   role: 'playing' | 'alternate'
   selected_at: string
+  updated_at: string
 }
 
 type ProfileRow = {
@@ -20,14 +21,14 @@ type ProfileRow = {
   handicap_index: number | null
 }
 
+type RosterStatus = 'Draft' | 'Sent' | 'Changed'
+
 export default async function RosterReviewPage({
   params,
 }: {
   params: Promise<{ event_id: string }>
 }) {
-  // ✅ REQUIRED in newer Next.js
   const { event_id } = await params
-
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -51,7 +52,9 @@ export default async function RosterReviewPage({
   /* ---------- Load Event ---------- */
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, date, hosting_club, opponent_club, hosting_location')
+    .select(
+      'id, date, hosting_club, opponent_club, hosting_location, roster_last_emailed_at'
+    )
     .eq('id', event_id)
     .single()
 
@@ -63,7 +66,7 @@ export default async function RosterReviewPage({
   /* ---------- Load Roster ---------- */
   const { data: rosterRows, error: rosterError } = await supabase
     .from('event_roster')
-    .select('profile_id, role, selected_at')
+    .select('profile_id, role, selected_at, updated_at')
     .eq('event_id', event_id)
 
   if (rosterError) {
@@ -95,68 +98,71 @@ export default async function RosterReviewPage({
   const playing = roster.filter(r => r.role === 'playing')
   const alternates = roster.filter(r => r.role === 'alternate')
 
+  /* ---------- Status Logic ---------- */
+  let rosterStatus: RosterStatus = 'Draft'
+
+  if (event.roster_last_emailed_at) {
+    const lastEmailedAt = new Date(event.roster_last_emailed_at)
+    const changed = roster.some(r => new Date(r.updated_at) > lastEmailedAt)
+    rosterStatus = changed ? 'Changed' : 'Sent'
+  }
+
+  const canSendRosterEmail =
+    roster.length > 0 && rosterStatus !== 'Sent'
+
   /* ---------- Render ---------- */
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 space-y-8">
-      {/* Back */}
       <div className="text-sm text-gray-500">
         <Link href="/admin/events">← Back to Events</Link>
       </div>
 
-      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-serif">
             Roster – {event.hosting_club} vs {event.opponent_club}
           </h1>
           <p className="text-sm text-gray-600">
-            {new Date(event.date).toLocaleString()} •{' '}
-            {event.hosting_location}
+            {new Date(event.date).toLocaleString()} • {event.hosting_location}
           </p>
         </div>
 
-        <span className="px-3 py-1 rounded bg-gray-100 text-sm">
-          Draft
-        </span>
+        <div className="flex items-center gap-3">
+          <span
+            className={`px-3 py-1 rounded text-sm font-medium ${
+              rosterStatus === 'Draft'
+                ? 'bg-gray-100 text-gray-700'
+                : rosterStatus === 'Sent'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}
+          >
+            {rosterStatus}
+          </span>
+
+          {canSendRosterEmail && (
+            <form
+              method="POST"
+              action={`/admin/events/${event_id}/roster/send-email`}
+            >
+              <button className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">
+                Send Roster Email
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
-        <nav className="flex gap-6 text-sm">
-          <Link
-            href={`/admin/events/${event_id}/roster`}
-            className="pb-2 border-b-2 border-blue-600 text-blue-600"
-          >
-            Roster
-          </Link>
-          <Link
-            href={`/admin/events/${event_id}/pairings`}
-            className="pb-2 text-gray-400"
-          >
-            Pairings
-          </Link>
-          <Link
-            href={`/admin/events/${event_id}/emails`}
-            className="pb-2 text-gray-400"
-          >
-            Emails
-          </Link>
-        </nav>
-      </div>
-
-      {/* Summary */}
       <div className="text-sm text-gray-700">
         {playing.length} Playing • {alternates.length} Alternates
       </div>
 
-      {/* Empty */}
       {roster.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded p-4 text-sm">
           No players have been added to this roster yet.
         </div>
       )}
 
-      {/* Table */}
       {roster.length > 0 && (
         <div className="bg-white border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
@@ -178,15 +184,44 @@ export default async function RosterReviewPage({
                   <td className="px-3 py-2">
                     {r.profile.handicap_index ?? '—'}
                   </td>
-                  <td className="px-3 py-2 capitalize">
-                    {r.role}
-                  </td>
                   <td className="px-3 py-2">
-                    {r.profile.email}
+                    <form
+                      method="POST"
+                      action={`/admin/events/${event_id}/roster/update-role`}
+                      className="inline-flex rounded border overflow-hidden"
+                    >
+                      <input type="hidden" name="event_id" value={event_id} />
+                      <input type="hidden" name="profile_id" value={r.profile_id} />
+
+                      <button
+                        type="submit"
+                        name="role"
+                        value="playing"
+                        className={`px-3 py-1 text-sm ${
+                          r.role === 'playing'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        Playing
+                      </button>
+
+                      <button
+                        type="submit"
+                        name="role"
+                        value="alternate"
+                        className={`px-3 py-1 text-sm border-l ${
+                          r.role === 'alternate'
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        Alternate
+                      </button>
+                    </form>
                   </td>
-                  <td className="px-3 py-2">
-                    {r.profile.cell_phone ?? '—'}
-                  </td>
+                  <td className="px-3 py-2">{r.profile.email}</td>
+                  <td className="px-3 py-2">{r.profile.cell_phone ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
