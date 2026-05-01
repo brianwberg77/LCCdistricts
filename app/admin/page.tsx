@@ -1,65 +1,67 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 /* ------------------------
    Types
 ------------------------- */
 type ProfileLite = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-};
+  id: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+}
 
 type RSVPRow = {
-  id: string;
-  event_id: string;
-  status: 'Yes' | 'Maybe' | 'No';
-  comments?: string | null;
-  profiles: ProfileLite | ProfileLite[];
-};
+  id: string
+  event_id: string
+  profile_id: string
+  status: 'Yes' | 'Maybe' | 'No'
+  comments?: string | null
+  profiles: ProfileLite | ProfileLite[]
+}
 
 type EventRow = {
-  id: string;
-  date: string;
-  rsvp_cutoff?: string | null;
-  hosting_club: string;
-  hosting_location?: string | null;
-  opponent_club: string;
-};
+  id: string
+  date: string
+  rsvp_cutoff?: string | null
+  hosting_club: string
+  hosting_location?: string | null
+  opponent_club: string
+}
 
 type RosterRow = {
-  event_id: string;
-  member_id: string;
-};
+  event_id: string
+  profile_id: string
+  role: string
+}
 
 /* ------------------------
-   Display helpers (SAFE)
+   Helpers
 ------------------------- */
 function formatDisplayDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-  });
+  })
 }
 
 function formatDisplayTime(d: string) {
   return new Date(d).toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit',
-  });
+  })
 }
 
 /* ------------------------
    Page
 ------------------------- */
 export default async function AdminRosterPage() {
-  /* ---------- Supabase SSR ---------- */
-  const cookieStore = await cookies();
+  /* ---------- Supabase ---------- */
+  const cookieStore = await cookies()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,104 +69,62 @@ export default async function AdminRosterPage() {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return cookieStore.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
-            );
+            )
           } catch {}
         },
       },
     }
-  );
+  )
 
   /* ---------- Auth ---------- */
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) redirect('/login');
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData?.user) redirect('/login')
 
-  const { data: isAdmin } = await supabase.rpc('is_admin');
-  if (!isAdmin) redirect('/dashboard');
-
-  /* ---------- Server Action ---------- */
-  async function toggleRoster(formData: FormData) {
-    'use server';
-
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
-
-    const event_id = String(formData.get('event_id'));
-    const member_id = String(formData.get('member_id'));
-    const action = String(formData.get('action'));
-
-    if (action === 'remove') {
-      await supabase
-        .from('event_roster')
-        .delete()
-        .eq('event_id', event_id)
-        .eq('member_id', member_id);
-    } else {
-      await supabase
-        .from('event_roster')
-        .upsert({ event_id, member_id }, { onConflict: 'event_id,member_id' });
-    }
-
-    redirect('/admin');
-  }
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (!isAdmin) redirect('/dashboard')
 
   /* ---------- Load data ---------- */
   const { data: events } = await supabase
     .from('events')
-    .select('*')
-    .order('date', { ascending: true });
+    .select('id, date, rsvp_cutoff, hosting_club, hosting_location, opponent_club')
+    .order('date', { ascending: true })
 
   const { data: rsvps } = await supabase
     .from('rsvps')
     .select(`
       id,
+      event_id,
+      profile_id,
       status,
       comments,
-      event_id,
       profiles (
         id,
         first_name,
         last_name,
         email
       )
-    `);
+    `)
 
   const { data: roster } = await supabase
     .from('event_roster')
-    .select('event_id, member_id');
+    .select('event_id, profile_id, role')
 
-  /* ---------- Build selection map ---------- */
-  const selectedMap = new Map<string, Set<string>>();
-  (roster ?? []).forEach((r: RosterRow) => {
+  /* ---------- Build selected map ---------- */
+  const selectedMap = new Map<string, Set<string>>()
+  ;(roster ?? []).forEach((r: RosterRow) => {
     if (!selectedMap.has(r.event_id)) {
-      selectedMap.set(r.event_id, new Set());
+      selectedMap.set(r.event_id, new Set())
     }
-    selectedMap.get(r.event_id)!.add(r.member_id);
-  });
+    selectedMap.get(r.event_id)!.add(r.profile_id)
+  })
 
-  const now = new Date();
+  const now = new Date()
 
   /* ---------- Render ---------- */
   return (
@@ -179,32 +139,26 @@ export default async function AdminRosterPage() {
           </p>
         </div>
 
-        <a
-          href="/admin/events"
-          className="text-sm text-[#0a2540] hover:text-[#d4af37]"
-        >
-          Manage Events →
-        </a>
-
-<a
-  href="/admin/members"
-  className="text-sm font-medium text-[#0a2540] hover:text-[#d4af37]"
->
-  Manage Members →
-</a>
-
+        <div className="flex gap-4 text-sm">
+          <a href="/admin/events" className="text-[#0a2540] hover:underline">
+            Manage Events →
+          </a>
+          <a href="/admin/members" className="text-[#0a2540] hover:underline">
+            Manage Members →
+          </a>
+        </div>
       </div>
 
       {(events ?? []).map((event: EventRow) => {
-        const eventRSVPs = (rsvps ?? []).filter(r => r.event_id === event.id);
-        const yes = eventRSVPs.filter(r => r.status === 'Yes');
-        const maybe = eventRSVPs.filter(r => r.status === 'Maybe');
-        const no = eventRSVPs.filter(r => r.status === 'No');
+        const eventRSVPs = (rsvps ?? []).filter(r => r.event_id === event.id)
+        const yes = eventRSVPs.filter(r => r.status === 'Yes')
+        const maybe = eventRSVPs.filter(r => r.status === 'Maybe')
+        const no = eventRSVPs.filter(r => r.status === 'No')
 
-        const cutoff = event.rsvp_cutoff ? new Date(event.rsvp_cutoff) : null;
-        const locked = cutoff ? now > cutoff : false;
+        const cutoff = event.rsvp_cutoff ? new Date(event.rsvp_cutoff) : null
+        const locked = cutoff ? now > cutoff : false
 
-        const selected = selectedMap.get(event.id) ?? new Set<string>();
+        const selected = selectedMap.get(event.id) ?? new Set<string>()
 
         return (
           <section
@@ -222,9 +176,14 @@ export default async function AdminRosterPage() {
                 </div>
                 <div className="text-sm text-gray-500">
                   {formatDisplayTime(event.date)}
+                  {event.hosting_location ? ` • ${event.hosting_location}` : ''}
                 </div>
                 {cutoff && (
-                  <div className={`text-sm mt-1 ${locked ? 'text-red-600' : 'text-gray-500'}`}>
+                  <div
+                    className={`text-sm mt-1 ${
+                      locked ? 'text-red-600' : 'text-gray-500'
+                    }`}
+                  >
                     RSVP Cutoff: {cutoff.toLocaleString()} {locked && '🔒'}
                   </div>
                 )}
@@ -256,11 +215,11 @@ export default async function AdminRosterPage() {
                   {yes.map(r => {
                     const profile = Array.isArray(r.profiles)
                       ? r.profiles[0]
-                      : r.profiles;
+                      : r.profiles
 
-                    if (!profile) return null;
+                    if (!profile) return null
 
-                    const isSelected = selected.has(profile.id);
+                    const isSelected = selected.has(profile.id)
 
                     return (
                       <div
@@ -278,14 +237,26 @@ export default async function AdminRosterPage() {
                           )}
                         </div>
 
-                        <form action={toggleRoster}>
-                          <input type="hidden" name="event_id" value={event.id} />
-                          <input type="hidden" name="member_id" value={profile.id} />
+                        <form
+                          action="/admin/events/roster/select"
+                          method="POST"
+                        >
+                          <input
+                            type="hidden"
+                            name="event_id"
+                            value={event.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="profile_id"
+                            value={profile.id}
+                          />
                           <input
                             type="hidden"
                             name="action"
                             value={isSelected ? 'remove' : 'add'}
                           />
+
                           <button
                             className={`px-3 py-2 rounded-lg text-sm ${
                               isSelected
@@ -297,14 +268,14 @@ export default async function AdminRosterPage() {
                           </button>
                         </form>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               )}
             </div>
           </section>
-        );
+        )
       })}
     </main>
-  );
+  )
 }

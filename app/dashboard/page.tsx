@@ -10,7 +10,8 @@ import {
 export const dynamic = 'force-dynamic'
 
 type RsvpRow = {
-  member_id: string
+  event_id: string
+  profile_id: string
   status: 'Yes' | 'No' | 'Maybe'
   comments?: string | null
 }
@@ -21,7 +22,6 @@ type EventRow = {
   rsvp_cutoff?: string | null
   hosting_club: string
   opponent_club: string
-  rsvps?: RsvpRow[]
 }
 
 export default async function DashboardPage() {
@@ -47,29 +47,29 @@ export default async function DashboardPage() {
   const { data: userData } = await supabase.auth.getUser()
   if (!userData?.user) redirect('/login')
 
-  const memberId = userData.user.id
+  const profileId = userData.user.id
 
   // ----------------------------
-  // Load events + RSVPs
+  // QUERY 1: Load events
   // ----------------------------
-  const { data: events, error } = await supabase
+  const { data: events, error: eventsError } = await supabase
     .from('events')
-    .select(`
-      id,
-      date,
-      rsvp_cutoff,
-      hosting_club,
-      opponent_club,
-      rsvps (
-        member_id,
-        status,
-        comments
-      )
-    `)
+    .select('id, date, rsvp_cutoff, hosting_club, opponent_club')
     .order('date', { ascending: true })
 
-  if (error) {
-    throw new Error(`Failed to load dashboard: ${error.message}`)
+  if (eventsError) {
+    throw new Error(`Failed to load dashboard events: ${eventsError.message}`)
+  }
+
+  // ----------------------------
+  // QUERY 2: Load RSVPs (flat, safe)
+  // ----------------------------
+  const { data: rsvps, error: rsvpsError } = await supabase
+    .from('rsvps')
+    .select('event_id, profile_id, status, comments')
+
+  if (rsvpsError) {
+    throw new Error(`Failed to load RSVPs: ${rsvpsError.message}`)
   }
 
   // ----------------------------
@@ -78,18 +78,25 @@ export default async function DashboardPage() {
   return (
     <main className="max-w-5xl mx-auto px-6 py-12 space-y-6">
       <h1 className="text-4xl font-serif">Dashboard</h1>
-		
-<a
-    href="/league-info.pdf"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-  >
-    ℹ️ League Info
-  </a>
+
+      <a
+        href="/league-info.pdf"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+      >
+        ℹ️ League Info
+      </a>
 
       {(events as EventRow[]).map(e => {
-        const myRsvp = e.rsvps?.find(r => r.member_id === memberId)
+        const eventRsvps = (rsvps as RsvpRow[]).filter(
+          r => r.event_id === e.id
+        )
+
+        const myRsvp = eventRsvps.find(
+          r => r.profile_id === profileId
+        )
+
         const rsvpClosed =
           e.rsvp_cutoff &&
           new Date(e.rsvp_cutoff).getTime() < Date.now()

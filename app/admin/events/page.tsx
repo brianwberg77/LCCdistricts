@@ -7,6 +7,8 @@ import {
   formatRsvpCutoff,
 } from '@/lib/dateUtils'
 
+import Link from 'next/link'
+
 export const dynamic = 'force-dynamic'
 
 type EventRow = {
@@ -104,7 +106,17 @@ export default async function AdminEventsPage() {
             <div className="text-sm text-gray-600">
               {formatEventTime(e.date)}
               {e.hosting_location ? ` • ${e.hosting_location}` : ''}
+			  
             </div>
+
+<div className="mt-2">
+  <Link
+    href={`/admin/events/${e.id}/roster`}
+    className="text-sm text-blue-600 hover:underline"
+  >
+    View Roster →
+  </Link>
+</div>
 
             {e.rsvp_cutoff && (
               <div className="text-sm text-gray-500">
