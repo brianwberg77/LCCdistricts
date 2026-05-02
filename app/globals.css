@@ -13,6 +13,22 @@ body {
 }
 
 
+/* ---- FORCE LIGHT MODE ON CHROME MOBILE ---- */
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background-color: #f9fafb !important;
+    color: #111827 !important;
+    color-scheme: light !important;
+  }
+
+  * {
+    background-color: inherit;
+    color: inherit;
+    forced-color-adjust: none !important;
+  }
+}
+
 
 :root {
   --background: #ffffff;
