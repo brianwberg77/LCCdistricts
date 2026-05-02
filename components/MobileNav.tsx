@@ -26,8 +26,8 @@ export default function MobileNav({ isAdmin }: { isAdmin: boolean }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-md z-50">
-          <nav className="flex flex-col gap-2 p-3 text-sm"
+        <div className="absolute right-0 mt-2 w-52 text-gray-900 bg-white border rounded shadow-md z-50">
+          <nav className="flex flex-col gap-2 p-3 text-sm text-gray-900"
 		  onClick={closeMenu}
 		  >
             {isAdmin && <AdminNav />}
