@@ -44,11 +44,15 @@ export default async function RootLayout({
   }
 
   return (
+
     <html lang="en" className="light">
+		<head>
+	  <meta name="color-scheme" content="light" />
+	</head>
       <body className="bg-gray-50">
         <SupabaseProvider>
           {/* Header */}
-          <header className="header-bg py-4 sticky top-0 z-50 shadow-md">
+          <header className="header-bg bg-white py-4 sticky top-0 z-50 shadow-md">
             <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
               {/* Logo + Title */}
               <div className="flex items-center gap-4">

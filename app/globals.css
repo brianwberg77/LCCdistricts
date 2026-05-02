@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 
-html {
+
+html,
+body {
   color-scheme: light;
+  background-color: #f9fafb; /* matches bg-gray-50 */
 }
+
+* {
+  forced-color-adjust: none;
+}
+
 
 
 :root {
