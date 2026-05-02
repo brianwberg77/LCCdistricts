@@ -1,7 +1,11 @@
+
+
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import Link from "next/link";
+import Link from 'next/link'
+
+
 
 export const dynamic = 'force-dynamic'
 
@@ -130,6 +134,7 @@ export default async function AdminRosterPage() {
   /* ---------- Render ---------- */
   return (
     <main className="max-w-6xl mx-auto px-6 py-12 space-y-10">
+      {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-serif text-[#0a2540]">
@@ -141,15 +146,16 @@ export default async function AdminRosterPage() {
         </div>
 
         <div className="flex gap-4 text-sm">
-          <a href="/admin/events" className="text-[#0a2540] hover:underline">
+          <Link href="/admin/events" className="text-[#0a2540] hover:underline">
             Manage Events →
-          </a>
-          <a href="/admin/members" className="text-[#0a2540] hover:underline">
+          </Link>
+          <Link href="/admin/members" className="text-[#0a2540] hover:underline">
             Manage Members →
-          </a>
+          </Link>
         </div>
       </div>
 
+      {/* Events */}
       {(events ?? []).map((event: EventRow) => {
         const eventRSVPs = (rsvps ?? []).filter(r => r.event_id === event.id)
         const yes = eventRSVPs.filter(r => r.status === 'Yes')
@@ -158,15 +164,14 @@ export default async function AdminRosterPage() {
 
         const cutoff = event.rsvp_cutoff ? new Date(event.rsvp_cutoff) : null
         const locked = cutoff ? now > cutoff : false
-
         const selected = selectedMap.get(event.id) ?? new Set<string>()
 
         return (
           <section
             key={event.id}
-            className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
+            className="bg-white rounded-2xl shadow-xl p-4 md:p-8 space-y-4 md:space-y-6"
           >
-            {/* Event header */}
+            {/* Event Header */}
             <div className="flex justify-between gap-6">
               <div>
                 <h2 className="text-2xl font-medium">
@@ -190,27 +195,30 @@ export default async function AdminRosterPage() {
                 )}
               </div>
 
-              <div className="flex gap-3 text-sm">
-                <span className="px-3 py-1 rounded bg-green-100 text-green-800">
-                  ✅ Yes: {yes.length}
-                </span>
-                <span className="px-3 py-1 rounded bg-yellow-100 text-yellow-800">
-                  ❓ Maybe: {maybe.length}
-                </span>
-                <span className="px-3 py-1 rounded bg-red-100 text-red-800">
-                  ❌ No: {no.length}
-                </span>
-              </div>			  
-				{/* ✅ View Roster Button */}
-					<Link
-					  href={`/admin/events/${event.id}/roster`}
-					  className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-					>
-					  View Roster
-					</Link>
+              {/* RSVP Summary + View Roster */}
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                <div className="flex flex-wrap gap-2 text-xs md:text-sm">
+                  <span className="px-2 py-1 rounded bg-green-100 text-green-800">
+                    ✅ Yes: {yes.length}
+                  </span>
+                  <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">
+                    ❓ Maybe: {maybe.length}
+                  </span>
+                  <span className="px-2 py-1 rounded bg-red-100 text-red-800">
+                    ❌ No: {no.length}
+                  </span>
+                </div>
+
+                <Link
+                  href={`/admin/events/${event.id}/roster`}
+                  className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 md:ml-auto"
+                >
+                  View Roster
+                </Link>
+              </div>
             </div>
 
-            {/* Roster builder */}
+            {/* Roster Builder */}
             <div className="space-y-3">
               <h3 className="font-semibold">Roster Candidates (Yes)</h3>
 
@@ -226,7 +234,6 @@ export default async function AdminRosterPage() {
                       : r.profiles
 
                     if (!profile) return null
-
                     const isSelected = selected.has(profile.id)
 
                     return (
@@ -249,22 +256,13 @@ export default async function AdminRosterPage() {
                           action="/admin/events/roster/select"
                           method="POST"
                         >
-                          <input
-                            type="hidden"
-                            name="event_id"
-                            value={event.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="profile_id"
-                            value={profile.id}
-                          />
+                          <input type="hidden" name="event_id" value={event.id} />
+                          <input type="hidden" name="profile_id" value={profile.id} />
                           <input
                             type="hidden"
                             name="action"
                             value={isSelected ? 'remove' : 'add'}
                           />
-
                           <button
                             className={`px-3 py-2 rounded-lg text-sm ${
                               isSelected
