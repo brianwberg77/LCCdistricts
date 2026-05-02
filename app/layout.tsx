@@ -8,6 +8,7 @@ import ProfileNav from "@/components/ProfileNav";
 import AuthNav from "@/components/AuthNav";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import MobileNav from '@/components/MobileNav'
 
 export const metadata: Metadata = {
   title: "Lincolnshire Country Club | District Roster",
@@ -43,7 +44,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <body className="bg-gray-50">
         <SupabaseProvider>
           {/* Header */}
@@ -70,10 +71,16 @@ export default async function RootLayout({
               </div>
 
               {/* Navigation */}
-              <nav className="flex gap-6 text-sm font-medium">
-                {isAdmin && <AdminNav />}
-                <AuthNav />
-              </nav>
+
+				{/* Desktop Nav */}
+				<nav className="hidden md:flex gap-6 text-sm font-medium">
+				  {isAdmin && <AdminNav />}
+				  <AuthNav />
+				</nav>
+
+				{/* Mobile Nav */}
+				<MobileNav isAdmin={isAdmin} />
+              
             </div>
           </header>
 

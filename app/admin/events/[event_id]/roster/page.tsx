@@ -112,7 +112,7 @@ export default async function RosterReviewPage({
 
   /* ---------- Render ---------- */
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+    <main className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-6 md:space-y-8">
 		<div className="text-sm text-gray-500 flex gap-4">
 		  <Link href="/admin" className="hover:underline">
 			← Back to Builder
@@ -128,7 +128,7 @@ export default async function RosterReviewPage({
 
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-serif">
+          <h1 className="text-2xl md:text-3xl font-serif">
             Roster – {event.hosting_club} vs {event.opponent_club}
           </h1>
           <p className="text-sm text-gray-600">
@@ -171,13 +171,14 @@ export default async function RosterReviewPage({
           No players have been added to this roster yet.
         </div>
       )}
+      
+			{roster.length > 0 && (
+			  <div className="bg-white border rounded-lg overflow-x-auto">
+				<table className="min-w-[700px] w-full text-sm">
 
-      {roster.length > 0 && (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-700">
               <tr>
-                <th className="px-3 py-2 text-left">Name</th>
+                <th className="px-3 py-2 text-left whitespace-nowrap">Name</th>
                 <th className="px-3 py-2 text-left">HCP</th>
                 <th className="px-3 py-2 text-left">Role</th>
                 <th className="px-3 py-2 text-left">Email</th>
@@ -229,7 +230,7 @@ export default async function RosterReviewPage({
                       </button>
                     </form>
                   </td>
-                  <td className="px-3 py-2">{r.profile.email}</td>
+                  <td className="px-3 py-2 break-all">{r.profile.email}</td>
                   <td className="px-3 py-2">{r.profile.cell_phone ?? '—'}</td>
                 </tr>
               ))}
