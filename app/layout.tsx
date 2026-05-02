@@ -44,7 +44,11 @@ export default async function RootLayout({
   }
 
   return (
+
     <html lang="en" className="light">
+		<head>
+	  <meta name="color-scheme" content="light" />
+	</head>
       <body className="bg-gray-50">
         <SupabaseProvider>
           {/* Header */}
