@@ -88,7 +88,7 @@ export async function POST(
       ${playing
         .map(
           p =>
-            `<li>${p.profiles.first_name} ${p.profiles.last_name} (${p.profiles.handicap_index ?? '—'})</li>`
+            `<li>${p.profiles[0].first_name} ${p.profiles[0].last_name} (${p.profiles[0].handicap_index ?? '—'})</li>`
         )
         .join('')}
     </ul>
@@ -98,7 +98,7 @@ export async function POST(
       ${alternates
         .map(
           p =>
-            `<li>${p.profiles.first_name} ${p.profiles.last_name}</li>`
+            `<li>${p.profiles[0].first_name} ${p.profiles[0].last_name}</li>`
         )
         .join('')}
     </ul>
