@@ -3,21 +3,45 @@ import "./globals.css";
 import { SupabaseProvider } from "@/components/SupabaseProvider";
 import Image from "next/image";
 import AdminNav from "@/components/AdminNav";
-import Link from "next/link"; 
+import Link from "next/link";
 import ProfileNav from "@/components/ProfileNav";
 import AuthNav from "@/components/AuthNav";
-
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
 export const metadata: Metadata = {
   title: "Lincolnshire Country Club | District Roster",
   description: "Official Interclub Match Roster & Availability",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // ✅ Server-side auth check every render
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => {},
+      },
+    }
+  );
+
+  const { data: userData } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+
+  if (userData?.user) {
+    const { data } = await supabase.rpc("is_admin");
+    isAdmin = Boolean(data);
+  }
+
   return (
     <html lang="en">
       <body className="bg-gray-50">
@@ -45,12 +69,11 @@ export default function RootLayout({
                 </div>
               </div>
 
-              {/* Navigation */}              
-		<nav className="flex gap-6 text-sm font-medium">		  
-		  <AdminNav />
-		  <AuthNav />
-		</nav>
-
+              {/* Navigation */}
+              <nav className="flex gap-6 text-sm font-medium">
+                {isAdmin && <AdminNav />}
+                <AuthNav />
+              </nav>
             </div>
           </header>
 
