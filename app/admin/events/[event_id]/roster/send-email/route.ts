@@ -68,12 +68,12 @@ export async function POST(
 
   // ✅ Build recipient lists
   const to = playing
-    .map(p => p.profiles?.email)
+    .map(p => p.profiles?.[0]?.email)
     .filter(Boolean)
     .join(',')
 
   const cc = alternates
-    .map(p => p.profiles?.email)
+    .map(p => p.profiles?.[0]?.email)
     .filter(Boolean)
     .join(',')
 
