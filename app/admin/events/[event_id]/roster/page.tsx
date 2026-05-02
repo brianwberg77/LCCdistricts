@@ -113,9 +113,18 @@ export default async function RosterReviewPage({
   /* ---------- Render ---------- */
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 space-y-8">
-      <div className="text-sm text-gray-500">
-        <Link href="/admin/events">← Back to Events</Link>
-      </div>
+		<div className="text-sm text-gray-500 flex gap-4">
+		  <Link href="/admin" className="hover:underline">
+			← Back to Builder
+		  </Link>
+
+		  <span className="text-gray-300">|</span>
+
+		  <Link href="/admin/events" className="hover:underline">
+			Back to Events
+		  </Link>
+		</div>
+
 
       <div className="flex justify-between items-start">
         <div>

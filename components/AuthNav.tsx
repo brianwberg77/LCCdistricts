@@ -17,11 +17,17 @@ export default function AuthNav() {
       setState(data?.user ? "logged-in" : "logged-out");
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      supabase.auth.getUser().then(({ data }) => {
-        setState(data?.user ? "logged-in" : "logged-out");
-      });
-    });
+
+const { data: sub } = supabase.auth.onAuthStateChange(() => {
+  supabase.auth.getUser().then(({ data }) => {
+    const newState = data?.user ? "logged-in" : "logged-out";
+    setState(newState);
+
+    // ✅ FORCE layout.tsx to re-evaluate admin state
+    router.refresh();
+  });
+});
+
 
     return () => sub.subscription.unsubscribe();
   }, [supabase]);

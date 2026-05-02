@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic'
 
@@ -199,7 +200,14 @@ export default async function AdminRosterPage() {
                 <span className="px-3 py-1 rounded bg-red-100 text-red-800">
                   ❌ No: {no.length}
                 </span>
-              </div>
+              </div>			  
+				{/* ✅ View Roster Button */}
+					<Link
+					  href={`/admin/events/${event.id}/roster`}
+					  className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+					>
+					  View Roster
+					</Link>
             </div>
 
             {/* Roster builder */}
