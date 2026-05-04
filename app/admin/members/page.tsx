@@ -14,14 +14,19 @@ type ProfileRow = {
   member_number: string | null;
   cdga_number: string | null;
   role: string | null;
+  is_active: boolean;
+  deactivated_at: string | null;
+  deactivated_by: string | null;
 };
 
 export default async function AdminMembersPage({
   searchParams,
 }: {
-  searchParams?: { notice?: string };
+  searchParams?: Promise<{ notice?: string; inactive?: string }>;
 }) {
   const cookieStore = await cookies();
+  const resolvedSearchParams = await searchParams;
+  const showInactive = resolvedSearchParams?.inactive === "true";
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,6 +47,7 @@ export default async function AdminMembersPage({
     }
   );
 
+  /* ---------- Auth ---------- */
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) redirect("/login");
 
@@ -53,19 +59,62 @@ export default async function AdminMembersPage({
 
   if (me?.role !== "admin") redirect("/dashboard");
 
-  const { data: members, error } = await supabase
+  /* ---------- Members Query ---------- */
+  let query = supabase
     .from("profiles")
-    .select("id, first_name, last_name, email, cell_phone, member_number, cdga_number, role")
+    .select(
+      `
+      id,
+      first_name,
+      last_name,
+      email,
+      cell_phone,
+      member_number,
+      cdga_number,
+      role,
+      is_active,
+      deactivated_at,
+      deactivated_by
+    `
+    )
     .order("last_name", { ascending: true });
 
-  if (error) throw new Error("Failed to load members: " + error.message);
+  if (!showInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data: members, error } = await query;
+
+  if (error) {
+    throw new Error("Failed to load members: " + error.message);
+  }
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-12 space-y-8">
+      {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-4xl font-serif text-[#0a2540]">Admin – Members</h1>
-          <p className="text-gray-600">Click Edit to modify a member profile.</p>
+          <h1 className="text-4xl font-serif text-[#0a2540]">
+            Admin – Members
+          </h1>
+          <p className="text-gray-600">
+            Click Edit to modify a member profile.
+          </p>
+
+          <div className="mt-2 text-sm">
+            {showInactive ? (
+              <Link href="/admin/members" className="text-blue-700 hover:underline">
+                Hide inactive golfers
+              </Link>
+            ) : (
+              <Link
+                href="/admin/members?inactive=true"
+                className="text-blue-700 hover:underline"
+              >
+                Show inactive golfers
+              </Link>
+            )}
+          </div>
         </div>
 
         <Link href="/admin" className="text-sm text-blue-700">
@@ -73,12 +122,14 @@ export default async function AdminMembersPage({
         </Link>
       </div>
 
-      {searchParams?.notice ? (
+      {/* Notice */}
+      {resolvedSearchParams?.notice && (
         <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-lg">
-          {searchParams.notice}
+          {resolvedSearchParams.notice}
         </div>
-      ) : null}
+      )}
 
+      {/* Members Table */}
       <section className="bg-white rounded-2xl shadow-xl p-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
@@ -86,7 +137,8 @@ export default async function AdminMembersPage({
               <tr className="border-b bg-gray-50 text-left">
                 <th className="py-3 px-4">Name</th>
                 <th className="py-3 px-4">Email</th>
-                <th className="py-3 px-4">Role</th>                
+                <th className="py-3 px-4">Role</th>
+                {showInactive && <th className="py-3 px-4">Status</th>}
                 <th className="py-3 px-4"></th>
               </tr>
             </thead>
@@ -94,18 +146,51 @@ export default async function AdminMembersPage({
             <tbody>
               {(members as ProfileRow[]).map((m) => {
                 const editHref = `/admin/members/${m.id}`;
+                const fullName =
+                  `${m.last_name ?? ""}${m.last_name && m.first_name ? ", " : ""}${m.first_name ?? ""}`;
 
                 return (
-                  <tr key={m.id} className="border-b hover:bg-gray-50">
+                  <tr
+                    key={m.id}
+                    className={`border-b hover:bg-gray-50 ${
+                      !m.is_active ? "opacity-70" : ""
+                    }`}
+                  >
                     <td className="py-3 px-4">
-                      {m.last_name ?? ""}{m.last_name && m.first_name ? ", " : ""}{m.first_name ?? ""}
+                      {fullName}
+
+                      {!m.is_active && (
+                        <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                          Inactive
+                        </span>
+                      )}
                     </td>
 
-                    <td className="py-3 px-4">{m.email ?? "—"}</td>
+                    <td className="py-3 px-4">
+                      {m.email ?? "—"}
+                    </td>
 
-                    <td className="py-3 px-4 capitalize">{m.role ?? "member"}</td>
+                    <td className="py-3 px-4 capitalize">
+                      {m.role ?? "member"}
+                    </td>
 
-                
+                    {showInactive && (
+                      <td className="py-3 px-4 text-xs text-gray-600">
+                        {!m.is_active && m.deactivated_at ? (
+                          <>
+                            <div>
+                              Deactivated on{" "}
+                              {new Date(m.deactivated_at).toLocaleDateString()}
+                            </div>
+                            <div className="mt-0.5 text-gray-500">
+                              By: {m.deactivated_by ?? "unknown"}
+                            </div>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    )}
 
                     <td className="py-3 px-4 text-right">
                       <Link
@@ -122,7 +207,10 @@ export default async function AdminMembersPage({
 
               {(!members || members.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="py-6 px-4 text-gray-500">
+                  <td
+                    colSpan={showInactive ? 5 : 4}
+                    className="py-6 px-4 text-gray-500"
+                  >
                     No members found.
                   </td>
                 </tr>
@@ -132,7 +220,7 @@ export default async function AdminMembersPage({
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          Debug note: Next.js can prefetch routes automatically; we disabled Link prefetch here to reduce noise. 
+          Debug note: Next.js auto-prefetch disabled here to reduce noise.
         </p>
       </section>
     </main>

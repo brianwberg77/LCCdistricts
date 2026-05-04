@@ -1,11 +1,7 @@
-
-
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import Link from 'next/link'
-
-
 
 export const dynamic = 'force-dynamic'
 
@@ -100,6 +96,7 @@ export default async function AdminRosterPage() {
     .select('id, date, rsvp_cutoff, hosting_club, hosting_location, opponent_club')
     .order('date', { ascending: true })
 
+  // ✅ Only RSVPs with ACTIVE golfers
   const { data: rsvps } = await supabase
     .from('rsvps')
     .select(`
@@ -108,13 +105,15 @@ export default async function AdminRosterPage() {
       profile_id,
       status,
       comments,
-      profiles (
+      profiles!inner (
         id,
         first_name,
         last_name,
-        email
+        email,
+        is_active
       )
     `)
+    .eq('profiles.is_active', true)
 
   const { data: roster } = await supabase
     .from('event_roster')
@@ -169,7 +168,7 @@ export default async function AdminRosterPage() {
         return (
           <section
             key={event.id}
-            className="bg-white rounded-2xl shadow-xl p-4 md:p-8 space-y-4 md:space-y-6"
+            className="bg-white rounded-2xl shadow-xl p-4 md:p-8 space-y-6"
           >
             {/* Event Header */}
             <div className="flex justify-between gap-6">
@@ -195,30 +194,21 @@ export default async function AdminRosterPage() {
                 )}
               </div>
 
-              {/* RSVP Summary + View Roster */}
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                <div className="flex flex-wrap gap-2 text-xs md:text-sm">
-                  <span className="px-2 py-1 rounded bg-green-100 text-green-800">
-                    ✅ Yes: {yes.length}
-                  </span>
-                  <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">
-                    ❓ Maybe: {maybe.length}
-                  </span>
-                  <span className="px-2 py-1 rounded bg-red-100 text-red-800">
-                    ❌ No: {no.length}
-                  </span>
-                </div>
-
-                <Link
-                  href={`/admin/events/${event.id}/roster`}
-                  className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 md:ml-auto"
-                >
-                  View Roster
-                </Link>
+              {/* RSVP Summary */}
+              <div className="flex flex-wrap gap-2 text-xs md:text-sm">
+                <span className="px-2 py-1 rounded bg-green-100 text-green-800">
+                  ✅ Yes: {yes.length}
+                </span>
+                <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">
+                  ❓ Maybe: {maybe.length}
+                </span>
+                <span className="px-2 py-1 rounded bg-red-100 text-red-800">
+                  ❌ No: {no.length}
+                </span>
               </div>
             </div>
 
-            {/* Roster Builder */}
+            {/* ✅ YES CANDIDATES */}
             <div className="space-y-3">
               <h3 className="font-semibold">Roster Candidates (Yes)</h3>
 
@@ -252,10 +242,7 @@ export default async function AdminRosterPage() {
                           )}
                         </div>
 
-                        <form
-                          action="/admin/events/roster/select"
-                          method="POST"
-                        >
+                        <form action="/admin/events/roster/select" method="POST">
                           <input type="hidden" name="event_id" value={event.id} />
                           <input type="hidden" name="profile_id" value={profile.id} />
                           <input
@@ -279,6 +266,66 @@ export default async function AdminRosterPage() {
                 </div>
               )}
             </div>
+
+            {/* ✅ MAYBE CANDIDATES */}
+            {maybe.length > 0 && (
+              <div className="space-y-3 pt-4 border-t">
+                <h3 className="font-semibold text-yellow-800">
+                  Possible Candidates (Maybe)
+                </h3>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  {maybe.map(r => {
+                    const profile = Array.isArray(r.profiles)
+                      ? r.profiles[0]
+                      : r.profiles
+
+                    if (!profile) return null
+                    const isSelected = selected.has(profile.id)
+
+                    return (
+                      <div
+                        key={r.id}
+                        className="border rounded-lg p-3 flex justify-between items-start gap-3 bg-yellow-50"
+                      >
+                        <div>
+                          <div className="font-medium">
+                            {profile.last_name}, {profile.first_name}
+                          </div>
+                          <div className="text-xs font-medium text-yellow-700">
+                            RSVP: Maybe
+                          </div>
+                          {r.comments && (
+                            <div className="text-xs text-gray-500 italic">
+                              “{r.comments}”
+                            </div>
+                          )}
+                        </div>
+
+                        <form action="/admin/events/roster/select" method="POST">
+                          <input type="hidden" name="event_id" value={event.id} />
+                          <input type="hidden" name="profile_id" value={profile.id} />
+                          <input
+                            type="hidden"
+                            name="action"
+                            value={isSelected ? 'remove' : 'add'}
+                          />
+                          <button
+                            className={`px-3 py-2 rounded-lg text-sm ${
+                              isSelected
+                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : 'bg-yellow-200 text-yellow-900 hover:bg-yellow-300'
+                            }`}
+                          >
+                            {isSelected ? 'Remove' : 'Select'}
+                          </button>
+                        </form>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </section>
         )
       })}
