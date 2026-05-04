@@ -235,6 +235,28 @@ export default function AdminMemberEditClient() {
         >
           {saving ? "Saving…" : "Save Member"}
         </button>
+		<div className="border-t pt-6 mt-8">
+		  <h3 className="text-sm font-semibold text-red-700">
+			Danger Zone
+		  </h3>
+
+		  <form
+			method="POST"
+			action={`/admin/members/${memberId}/deactivate`}
+			onSubmit={e => {
+			  if (!confirm('This will remove this golfer from all future use. Are you sure?')) {
+				e.preventDefault()
+			  }
+			}}
+		  >
+			<button
+			  type="submit"
+			  className="mt-3 px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+			>
+			  Deactivate Golfer
+			</button>
+		  </form>
+		</div>
       </section>
     </main>
   );

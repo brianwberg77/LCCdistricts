@@ -112,9 +112,11 @@ export default async function AdminRosterPage() {
         id,
         first_name,
         last_name,
-        email
+        email,
+		is_active
       )
     `)
+	.eq('profiles.is_active', true)
 
   const { data: roster } = await supabase
     .from('event_roster')
