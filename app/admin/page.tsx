@@ -206,6 +206,15 @@ export default async function AdminRosterPage() {
                   ❌ No: {no.length}
                 </span>
               </div>
+			  
+<Link
+    href={`/admin/events/${event.id}/roster`}
+    className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 md:ml-auto"
+  >
+    View Roster
+  </Link>
+
+
             </div>
 
             {/* ✅ YES CANDIDATES */}
