@@ -44,40 +44,55 @@ export async function POST(
     throw new Error('Unable to load event for email')
   }
 
-  // ✅ Load roster + profiles
-  const { data: roster, error: rosterError } = await supabase
+  // ✅ Load roster rows
+  const { data: rosterRows, error: rosterError } = await supabase
     .from('event_roster')
-    .select(`
-      role,
-      profiles (
-        first_name,
-        last_name,
-        email,
-        handicap_index
-      )
-    `)
+    .select('profile_id, role')
     .eq('event_id', event_id)
 
-  if (rosterError || !roster || roster.length === 0) {
+  if (rosterError || !rosterRows || rosterRows.length === 0) {
     console.error(rosterError)
     throw new Error('Roster empty or unavailable')
   }
 
+  // ✅ Load profiles separately (THIS FIXES YOUR CRASH)
+  const profileIds = rosterRows.map(r => r.profile_id)
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name, email, handicap_index')
+    .in('id', profileIds)
+
+  if (profilesError) {
+    console.error(profilesError)
+    throw new Error('Unable to load profiles')
+  }
+
+  // ✅ Combine roster + profile
+  const roster = rosterRows.map(r => ({
+    role: r.role,
+    profile: profiles!.find(p => p.id === r.profile_id)
+  }))
+
   const playing = roster.filter(r => r.role === 'playing')
   const alternates = roster.filter(r => r.role === 'alternate')
 
-  // ✅ Build recipient lists
+  // ✅ Build recipients
   const to = playing
-    .map(p => p.profiles?.[0]?.email)
+    .map(p => p.profile?.email)
     .filter(Boolean)
     .join(',')
 
   const cc = alternates
-    .map(p => p.profiles?.[0]?.email)
+    .map(p => p.profile?.email)
     .filter(Boolean)
     .join(',')
 
-  // ✅ Build email body
+  if (!to) {
+    throw new Error('No valid recipients found')
+  }
+
+  // ✅ Email body
   const dateStr = new Date(event.date).toLocaleString()
 
   const html = `
@@ -88,7 +103,7 @@ export async function POST(
       ${playing
         .map(
           p =>
-            `<li>${p.profiles[0].first_name} ${p.profiles[0].last_name} (${p.profiles[0].handicap_index ?? '—'})</li>`
+            `<li>${p.profile?.first_name} ${p.profile?.last_name} (${p.profile?.handicap_index ?? '—'})</li>`
         )
         .join('')}
     </ul>
@@ -98,7 +113,7 @@ export async function POST(
       ${alternates
         .map(
           p =>
-            `<li>${p.profiles[0].first_name} ${p.profiles[0].last_name}</li>`
+            `<li>${p.profile?.first_name} ${p.profile?.last_name}</li>`
         )
         .join('')}
     </ul>
@@ -112,7 +127,7 @@ export async function POST(
     <p>Please contact the captain or assistant captain with any questions.</p>
   `
 
-  // ✅ Configure Gmail transporter
+  // ✅ Mailer
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -121,16 +136,20 @@ export async function POST(
     },
   })
 
-  // ✅ Send email
-  await transporter.sendMail({
-    from: `"LCC Captain" <${process.env.GMAIL_USER}>`,
-    to,
-    cc,
-    subject: `This week district Match Roster @ ${event.hosting_club} vs ${event.opponent_club}`,
-    html,
-  })
+  try {
+    await transporter.sendMail({
+      from: `"LCC Captain" <${process.env.GMAIL_USER}>`,
+      to,
+      cc,
+      subject: `This week district Match Roster @ ${event.hosting_club} vs ${event.opponent_club}`,
+      html,
+    })
+  } catch (err) {
+    console.error('Email send failed:', err)
+    throw err
+  }
 
-  // ✅ Mark roster as emailed ONLY after successful send
+  // ✅ Mark sent
   await supabase
     .from('events')
     .update({
