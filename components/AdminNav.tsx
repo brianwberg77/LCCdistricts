@@ -5,36 +5,50 @@ import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 export default function AdminNav() {
-  const supabase = createClient();
-  const [isAdmin, setIsAdmin] = useState(false);
+    const supabase = createClient();
+    const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user) {
-        setIsAdmin(false);
-        return;
-      }
+    useEffect(() => {
+        const load = async () => {
+            const { data: user } = await supabase.auth.getUser();
+            if (!user?.user) {
+                setIsAdmin(false);
+                return;
+            }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.user.id)
-        .single();
+            const { data } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.user.id)
+                .single();
 
-      setIsAdmin(data?.role === "admin");
-    };
+            setIsAdmin(data?.role === "admin");
+        };
 
-    load();
-  }, [supabase]);
+        load();
+    }, [supabase]);
 
-  if (!isAdmin) return null;
+    if (!isAdmin) return null;
 
-  return (
-    <>
-      <Link href="/admin" className="text-sm hover:underline">
-        Return to Admin
-      </Link>
-    </>
-  );
+    return (
+        <>
+            <Link href="/admin" className="text-sm hover:underline">
+                Return to Admin
+            </Link>
+
+            <Link
+                href="/admin/communications"
+                className="text-sm hover:underline"
+            >
+                Communications
+            </Link>
+
+            <Link
+                href="/admin/usage"
+                className="text-sm hover:underline"
+            >
+                Player Usage
+            </Link>
+        </>
+    );
 }
