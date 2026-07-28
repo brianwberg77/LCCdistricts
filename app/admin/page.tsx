@@ -150,6 +150,9 @@ export default async function AdminRosterPage() {
           </Link>
           <Link href="/admin/members" className="text-[#0a2540] hover:underline">
             Manage Members →
+                  </Link>
+          <Link href="/admin/communications" className="text-[#0a2540] hover:underline">
+                      Admin Communications →
           </Link>
         </div>
       </div>
